@@ -3,10 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
-	"strconv"
-	"strings"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -174,25 +171,29 @@ func main() {
 	rand.Seed(int64(time.Now().Nanosecond()))
 	var start time.Time
 	var elapsed time.Duration
-	content, err := ioutil.ReadFile("eng-000")
-	checkErr(err)
-	var exprs []Expr
-	splitStrings := strings.Split(string(content), "\n")
-	for _, line := range splitStrings {
-		if len(line) == 0 {
-			continue
-		}
-		splitLine := strings.Split(line, "\t")
-		score, err := strconv.Atoi(splitLine[1])
-		checkErr(err)
-		expr := Expr{splitLine[0], score}
-		exprs = append(exprs, expr)
-	}
+	start = time.Now()
+	exprs := pullExprFromDB("eng-000")
+	elapsed = time.Since(start)
+	fmt.Printf("pulling from db took %s\n", elapsed)
+	// content, err := ioutil.ReadFile("eng-000")
+	// checkErr(err)
+	// var exprs []Expr
+	// splitStrings := strings.Split(string(content), "\n")
+	// for _, line := range splitStrings {
+	// 	if len(line) == 0 {
+	// 		continue
+	// 	}
+	// 	splitLine := strings.Split(line, "\t")
+	// 	score, err := strconv.Atoi(splitLine[1])
+	// 	checkErr(err)
+	// 	expr := Expr{splitLine[0], score}
+	// 	exprs = append(exprs, expr)
+	// }
 	var chain Chain
-	// start = time.Now()
-	// chain.Model = buildModelConc(exprs)
-	// elapsed = time.Since(start)
-	// fmt.Printf("conc model building took %s\n", elapsed)
+	start = time.Now()
+	chain.Model = buildModelConc(exprs)
+	elapsed = time.Since(start)
+	fmt.Printf("conc model building took %s\n", elapsed)
 	start = time.Now()
 	chain.Model = buildModel(exprs)
 	elapsed = time.Since(start)
@@ -203,9 +204,5 @@ func main() {
 	}
 	elapsed = time.Since(start)
 	fmt.Printf("generating 10 runs took %s\n", elapsed)
-	start = time.Now()
-	pullExprFromDB("eng-000")
-	elapsed = time.Since(start)
-	fmt.Printf("pulling from db took %s\n", elapsed)
 
 }
