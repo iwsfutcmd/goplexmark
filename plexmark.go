@@ -58,10 +58,17 @@ func prepString(s string) []rune {
 	return append(items, end)
 }
 
-func buildModel(corpus []Expr) Model {
+// func buildModel(corpus []Expr) Model {
+func buildModel(corpus sql.Rows) Model {
 	model := make(Model)
-	for _, expr := range corpus {
-		items := prepString(expr.Text)
+	// for _, expr := range corpus {
+	for corpus.Next() {
+		var text string
+		var score int
+		err := corpus.Scan(&text, &score)
+		checkErr(err)
+		// items := prepString(expr.Text)
+		items := prepString(text)
 		for i := 0; i < len(items)-stateSize; i++ {
 			var state [stateSize]rune
 			copy(state[:], items[i:i+stateSize])
@@ -70,7 +77,8 @@ func buildModel(corpus []Expr) Model {
 			if !ok {
 				model[state] = make(map[rune]int)
 			}
-			model[state][follow] += expr.Score
+			// model[state][follow] += expr.Score
+			model[state][follow] += score
 		}
 	}
 	return model
@@ -142,13 +150,12 @@ func walk(chain Chain) string {
 	return string(output[:len(output)-1])
 }
 
-func pullExprFromDB(uid string) []Expr {
-	var output []Expr
+func pullExprFromDB(uid string) sql.Rows {
+	// var output []Expr
 	dbinfo := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable", DB_USER, DB_PASSWORD, DB_NAME)
 	db, err := sql.Open("postgres", dbinfo)
 	checkErr(err)
 	defer db.Close()
-
 	const query = `
 		SELECT txt, score
 		FROM exprx
@@ -156,14 +163,15 @@ func pullExprFromDB(uid string) []Expr {
 		`
 	rows, err := db.Query(query, uid)
 	checkErr(err)
-	for rows.Next() {
-		var text string
-		var score int
-		err = rows.Scan(&text, &score)
-		checkErr(err)
-		output = append(output, Expr{text, score})
-	}
-	return output
+	defer rows.Close()
+	// for rows.Next() {
+	// 	var text string
+	// 	var score int
+	// 	err = rows.Scan(&text, &score)
+	// 	checkErr(err)
+	// 	output = append(output, Expr{text, score})
+	// }
+	return *rows
 }
 
 func main() {
@@ -190,10 +198,10 @@ func main() {
 	// 	exprs = append(exprs, expr)
 	// }
 	var chain Chain
-	start = time.Now()
-	chain.Model = buildModelConc(exprs)
-	elapsed = time.Since(start)
-	fmt.Printf("conc model building took %s\n", elapsed)
+	// start = time.Now()
+	// chain.Model = buildModelConc(exprs)
+	// elapsed = time.Since(start)
+	// fmt.Printf("conc model building took %s\n", elapsed)
 	start = time.Now()
 	chain.Model = buildModel(exprs)
 	elapsed = time.Since(start)
