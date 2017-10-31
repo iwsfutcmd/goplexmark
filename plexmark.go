@@ -97,7 +97,8 @@ func buildModelConc(corpus []Expr) Model {
 			var state [stateSize]rune
 			copy(state[:], preppedExpr.PreppedText[i:i+stateSize])
 			follow := preppedExpr.PreppedText[i+stateSize]
-			if model[state] == nil {
+			_, ok := model[state]
+			if !ok {
 				model[state] = make(map[rune]int)
 			}
 			model[state][follow] += preppedExpr.Score
