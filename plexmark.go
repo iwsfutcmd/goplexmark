@@ -58,16 +58,13 @@ func prepString(s string) []rune {
 	return append(items, end)
 }
 
-// func buildModel(corpus []Expr) Model {
 func buildModel(corpus *sql.Rows) Model {
 	model := make(Model)
-	// for _, expr := range corpus {
 	for corpus.Next() {
 		var text string
 		var score int
 		err := corpus.Scan(&text, &score)
 		checkErr(err)
-		// items := prepString(expr.Text)
 		items := prepString(text)
 		for i := 0; i < len(items)-stateSize; i++ {
 			var state [stateSize]rune
@@ -77,26 +74,31 @@ func buildModel(corpus *sql.Rows) Model {
 			if !ok {
 				model[state] = make(map[rune]int)
 			}
-			// model[state][follow] += expr.Score
 			model[state][follow] += score
 		}
 	}
 	return model
 }
 
-func prepExprs(exprs []Expr, c chan PreppedExpr) {
-	for _, expr := range exprs {
-		var items []rune
+func prepExprs(exprs *sql.Rows, c chan PreppedExpr) {
+	// for _, expr := range exprs {
+	for exprs.Next() {
+		var text string
+		var score int
+		err := exprs.Scan(&text, &score)
+		checkErr(err)
+		runeString := []rune(text)
+		items := make([]rune, 0, stateSize+len(runeString)+1)
 		for i := 0; i < stateSize; i++ {
 			items = append(items, begin)
 		}
-		items = append(items, []rune(expr.Text)...)
-		c <- PreppedExpr{append(items, end), expr.Score}
+		items = append(items, runeString...)
+		c <- PreppedExpr{append(items, end), score}
 	}
 	close(c)
 }
 
-func buildModelConc(corpus []Expr) Model {
+func buildModelConc(corpus *sql.Rows) Model {
 	model := make(Model)
 	c := make(chan PreppedExpr)
 	go prepExprs(corpus, c)
@@ -151,11 +153,9 @@ func walk(chain Chain) string {
 }
 
 func pullExprFromDB(uid string) *sql.Rows {
-	// var output []Expr
 	dbinfo := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable", DB_USER, DB_PASSWORD, DB_NAME)
 	db, err := sql.Open("postgres", dbinfo)
 	checkErr(err)
-	// defer db.Close()
 	const query = `
 		SELECT txt, score
 		FROM exprx
@@ -163,14 +163,6 @@ func pullExprFromDB(uid string) *sql.Rows {
 		`
 	rows, err := db.Query(query, uid)
 	checkErr(err)
-	// defer rows.Close()
-	// for rows.Next() {
-	// 	var text string
-	// 	var score int
-	// 	err = rows.Scan(&text, &score)
-	// 	checkErr(err)
-	// 	output = append(output, Expr{text, score})
-	// }
 	return rows
 }
 
@@ -179,29 +171,13 @@ func main() {
 	rand.Seed(int64(time.Now().Nanosecond()))
 	var start time.Time
 	var elapsed time.Duration
-	start = time.Now()
 	exprs := pullExprFromDB(os.Args[1])
-	elapsed = time.Since(start)
-	fmt.Printf("pulling from db took %s\n", elapsed)
-	// content, err := ioutil.ReadFile("eng-000")
-	// checkErr(err)
-	// var exprs []Expr
-	// splitStrings := strings.Split(string(content), "\n")
-	// for _, line := range splitStrings {
-	// 	if len(line) == 0 {
-	// 		continue
-	// 	}
-	// 	splitLine := strings.Split(line, "\t")
-	// 	score, err := strconv.Atoi(splitLine[1])
-	// 	checkErr(err)
-	// 	expr := Expr{splitLine[0], score}
-	// 	exprs = append(exprs, expr)
-	// }
 	var chain Chain
-	// start = time.Now()
-	// chain.Model = buildModelConc(exprs)
-	// elapsed = time.Since(start)
-	// fmt.Printf("conc model building took %s\n", elapsed)
+	start = time.Now()
+	chain.Model = buildModelConc(exprs)
+	elapsed = time.Since(start)
+	fmt.Printf("conc model building took %s\n", elapsed)
+	exprs = pullExprFromDB(os.Args[1])
 	start = time.Now()
 	chain.Model = buildModel(exprs)
 	elapsed = time.Since(start)
