@@ -59,7 +59,7 @@ func prepString(s string) []rune {
 }
 
 // func buildModel(corpus []Expr) Model {
-func buildModel(corpus sql.Rows) Model {
+func buildModel(corpus *sql.Rows) Model {
 	model := make(Model)
 	// for _, expr := range corpus {
 	for corpus.Next() {
@@ -150,12 +150,12 @@ func walk(chain Chain) string {
 	return string(output[:len(output)-1])
 }
 
-func pullExprFromDB(uid string) sql.Rows {
+func pullExprFromDB(uid string) *sql.Rows {
 	// var output []Expr
 	dbinfo := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable", DB_USER, DB_PASSWORD, DB_NAME)
 	db, err := sql.Open("postgres", dbinfo)
 	checkErr(err)
-	defer db.Close()
+	// defer db.Close()
 	const query = `
 		SELECT txt, score
 		FROM exprx
@@ -163,7 +163,7 @@ func pullExprFromDB(uid string) sql.Rows {
 		`
 	rows, err := db.Query(query, uid)
 	checkErr(err)
-	defer rows.Close()
+	// defer rows.Close()
 	// for rows.Next() {
 	// 	var text string
 	// 	var score int
@@ -171,7 +171,7 @@ func pullExprFromDB(uid string) sql.Rows {
 	// 	checkErr(err)
 	// 	output = append(output, Expr{text, score})
 	// }
-	return *rows
+	return rows
 }
 
 func main() {
