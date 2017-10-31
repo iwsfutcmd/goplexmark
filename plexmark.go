@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"math/rand"
+	"os"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -172,7 +173,7 @@ func main() {
 	var start time.Time
 	var elapsed time.Duration
 	start = time.Now()
-	exprs := pullExprFromDB("eng-000")
+	exprs := pullExprFromDB(os.Args[1])
 	elapsed = time.Since(start)
 	fmt.Printf("pulling from db took %s\n", elapsed)
 	// content, err := ioutil.ReadFile("eng-000")
