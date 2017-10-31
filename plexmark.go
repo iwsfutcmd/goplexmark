@@ -150,12 +150,10 @@ func pullExprFromDB(uid string) []Expr {
 	defer db.Close()
 
 	const query = `
-	        SELECT expr.txt, grp_quality_score(array_agg(denotationx.grp), array_agg(denotationx.quality))
-	        FROM expr
-	        JOIN denotationx ON (denotationx.expr = expr.id)
-	        WHERE expr.langvar = uid_langvar($1)
-	        GROUP BY expr.id
-	        `
+		SELECT txt, score
+		FROM exprx
+		WHERE langvar = uid_langvar($1)
+		`
 	rows, err := db.Query(query, uid)
 	checkErr(err)
 	for rows.Next() {
